@@ -9,10 +9,8 @@ from genetic_algorithm.operators.Selection.selection_operators import SelectionO
 class RouletteSelection:
     @staticmethod
     def select(population: List[Individual], num_parents: int) -> List[Individual]:
-        # Obtener los valores de aptitud de la población
         fitness_values = [individual.fitness for individual in population]
 
-        # Seleccionar padres usando selección por ruleta
         selected_parents = []
         while len(selected_parents) < num_parents:
             new_parent = choices(population, weights=fitness_values, k=1)[0]
