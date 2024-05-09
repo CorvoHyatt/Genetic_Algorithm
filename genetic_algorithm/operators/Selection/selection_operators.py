@@ -5,7 +5,5 @@ from genetic_algorithm.Individuals.individual import Individual
 
 class SelectionOperator:
     @staticmethod
-    def select(
-        population: List[List[Individual]], num_parents: int
-    ) -> List[List[Individual]]:
+    def select(population: List[List[Individual]]) -> List[List[Individual]]:
         raise NotImplementedError("Método select debe ser implementado por subclases")

@@ -2,22 +2,19 @@ from typing import List
 from random import choices
 
 from genetic_algorithm.Individuals.individual import Individual
+from genetic_algorithm.operators.Selection.selection_operators import SelectionOperator
 
 
-class RankSelection:
+class RankSelection(SelectionOperator):
     @staticmethod
     def select(self, population: List[Individual]) -> List[Individual]:
-        # Ordenar la población por aptitud de manera ascendente
         sorted_population = sorted(population, key=lambda x: x.fitness)
 
-        # Calcular el rango de cada individuo
         ranks = list(range(1, len(sorted_population) + 1))
 
-        # Calcular la probabilidad de selección para cada individuo basada en su rango
         total_ranks = sum(ranks)
         selection_probabilities = [rank / total_ranks for rank in ranks]
 
-        # Seleccionar n+1 individuos usando la probabilidad de selección
         selected_parents = []
         while len(selected_parents) < len(population) + 1:
             new_parent = choices(

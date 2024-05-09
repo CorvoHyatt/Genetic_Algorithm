@@ -1,9 +1,10 @@
 from typing import List
 from random import uniform
 from genetic_algorithm.Individuals.individual import Individual
+from genetic_algorithm.operators.Selection.selection_operators import SelectionOperator
 
 
-class StochasticUniversalSampling:
+class StochasticUniversalSampling(SelectionOperator):
     @staticmethod
     def select(population: List[Individual]) -> List[Individual]:
         fitness_values = [individual.fitness for individual in population]
