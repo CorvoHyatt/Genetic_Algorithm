@@ -7,7 +7,7 @@ from genetic_algorithm.operators.Selection.selection_operators import SelectionO
 
 class RankSelection(SelectionOperator):
     @staticmethod
-    def select(self, population: List[Individual]) -> List[Individual]:
+    def select(population: List[Individual]) -> List[Individual]:
         sorted_population = sorted(population, key=lambda x: x.fitness)
 
         ranks = list(range(1, len(sorted_population) + 1))

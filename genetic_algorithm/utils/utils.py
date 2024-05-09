@@ -2,32 +2,6 @@ import math
 import numpy as np
 
 
-def create_individual(
-    codification: str,
-    limits: int = 0,
-    bits_enteros: int = 0,
-    bits_decimales: int = 0,
-    variables: int = 0,
-) -> list[int]:
-
-    individual = []
-
-    if codification == "binary":
-        individual = np.random.choice(
-            [0, 1],
-            size=(bits_enteros + bits_decimales + 1) * variables,
-        )
-
-    if codification == "combination":
-        individual = np.random.randint(1, limits + 1, size=limits)
-
-    if codification == "permutation":
-        individual = np.arange(1, limits + 1)
-        np.random.shuffle(individual)
-
-    return individual
-
-
 def calcular_bits(rango_entero: int, precision: float):
     bits_enteros = math.ceil(math.log2(rango_entero))
 
