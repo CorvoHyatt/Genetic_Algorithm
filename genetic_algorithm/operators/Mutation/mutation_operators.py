@@ -3,5 +3,7 @@ from genetic_algorithm.Individuals.individual import Individual
 
 
 class MutationOperator:
-    def mutate(self, population: List[Individual]) -> List[Individual]:
+    def mutate(
+        self, population: List[Individual], probability: int
+    ) -> List[Individual]:
         raise NotImplementedError("Método mutate debe ser implementado por subclases")
