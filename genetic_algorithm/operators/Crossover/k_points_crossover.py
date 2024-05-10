@@ -31,20 +31,3 @@ class Kpoints(CrossoverOperator):
             new_population.append(child)
 
         return new_population
-
-
-# Crear instancias de Individual y asignarles un valor de fitness
-individuals = []
-for _ in range(6):
-    genotype = np.random.randint(
-        0, 2, size=(10,)
-    )  # Ejemplo de un genotipo aleatorio de tamaño 10
-    fitness_value = np.random.uniform(
-        0, 1
-    )  # Ejemplo de un valor de fitness aleatorio entre 0 y 1
-    individual = Individual(genotype)
-    individual.fitness = fitness_value
-    individuals.append(individual)
-
-population = Kpoints.crossover(individuals)
-print(*map(lambda x: x.__dict__, population), sep="\n")
