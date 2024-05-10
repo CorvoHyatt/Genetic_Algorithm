@@ -1,8 +1,27 @@
+import sys
+import time
 from typing import List, Literal
 from genetic_algorithm.Individuals.individual import Individual
 from genetic_algorithm.operators.Crossover.crossover_operators import CrossoverOperator
+from genetic_algorithm.operators.Crossover.k_points_crossover import Kpoints
+from genetic_algorithm.operators.Crossover.one_point_crossover import OnePoint
+from genetic_algorithm.operators.Crossover.ordered_crossover import OrderedOX1
+from genetic_algorithm.operators.Crossover.uniform_crossover import Uniform
+from genetic_algorithm.operators.Mutation.bit_inversion_mutation import BitInversion
+from genetic_algorithm.operators.Mutation.inversion_mutation import Inversion
 from genetic_algorithm.operators.Mutation.mutation_operators import MutationOperator
+from genetic_algorithm.operators.Mutation.shuffle_mutation import Shuffle
+from genetic_algorithm.operators.Mutation.swap_mutation import Swap
+from genetic_algorithm.operators.Selection.SUS_selection import (
+    StochasticUniversalSampling,
+)
+from genetic_algorithm.operators.Selection.rank_selection import RankSelection
+from genetic_algorithm.operators.Selection.roulette_selection import RouletteSelection
+from genetic_algorithm.operators.Selection.scaling_selection import ScalingSelection
 from genetic_algorithm.operators.Selection.selection_operators import SelectionOperator
+from genetic_algorithm.operators.Selection.tournament_selection import (
+    TournamentSelection,
+)
 from genetic_algorithm.population_generators.binary_generator import (
     BinaryPopulationGenerator,
 )
@@ -21,19 +40,21 @@ from genetic_algorithm.utils.utils import calcular_promedio_fitness
 class GeneticAlgorithm:
     def __init__(
         self,
-        selection_operator: SelectionOperator,
-        crossover_operator: CrossoverOperator,
-        mutation_operator: MutationOperator,
+        selection_operator: Literal["rank", "roulette", "scaling", "SUS", "tournament"],
+        crossover_operator: Literal["kpoints", "onepoint", "ordered", "uniform"],
+        mutation_operator: Literal["bitinversion", "inversion", "shuffle", "swap"],
         stopping_criteria_type: Literal[
             "function_calls", "iterations", "found_optimal", "nochangebest"
         ] = "nochangebest",
         max_call_functions: int = None,
-        max_iterations: int = None,
+        max_generations: int = None,
         optimal_solution: int = None,
         max_nochange_best: int = None,
         long_term_memory_reset: bool = True,
         problem_type: Literal["COP", "BenchMark"] = "BenchMark",
         limits: tuple[int, int] = [0, 32],
+        precision: float = 0.00001,
+        variables: int = 1,
         population_size: int = 100,
         probability_mutation: int = 7,
         codification: Literal[
@@ -41,13 +62,40 @@ class GeneticAlgorithm:
         ] = "permutation",
     ):
         self.population_size = population_size
-        self.selection_operator = selection_operator
-        self.crossover_operator = crossover_operator
-        self.mutation_operator = mutation_operator
+        if selection_operator == "rank":
+            self.selection_operator = RankSelection
+        elif selection_operator == "roulette":
+            self.selection_operator = RouletteSelection
+        elif selection_operator == "scaling":
+            self.selection_operator = ScalingSelection
+        elif selection_operator == "SUS":
+            self.selection_operator = StochasticUniversalSampling
+        elif selection_operator == "tournament":
+            self.selection_operator = TournamentSelection
+
+        if crossover_operator == "kpoints":
+            self.crossover_operator = Kpoints
+        elif crossover_operator == "onepoint":
+            self.crossover_operator = OnePoint
+        elif crossover_operator == "ordered":
+            self.crossover_operator = OrderedOX1
+        elif crossover_operator == "uniform":
+            self.crossover_operator = Uniform
+
+        if mutation_operator == "bitinversion":
+            self.mutation_operator = BitInversion
+        elif mutation_operator == "inversion":
+            self.mutation_operator = Inversion
+        elif mutation_operator == "shuffle":
+            self.mutation_operator = Shuffle
+        elif mutation_operator == "swap":
+            self.mutation_operator = Swap
+        self.precision = precision
+        self.variables = variables
         self.probability_mutation = probability_mutation
         self.stopping_criteria_type = stopping_criteria_type
         self.max_call_functions = max_call_functions
-        self.max_iterations = max_iterations
+        self.max_generations = max_generations
         self.optimal_solution = optimal_solution
         self.max_nochange_best = max_nochange_best
         self.long_term_memory_reset = long_term_memory_reset
@@ -65,23 +113,29 @@ class GeneticAlgorithm:
         self._cost_best = []
         self._cost_prom = []
         self.actual_best = None
-        self.iterations = 0
+        self.generations = 0
         self.best_nochange_conunter = 0
         self.function_call_counter = 0
         self.objetive = objetive
-        self.actual_solution_value = self.best
-        self.function_call_counter += 1
-        self._cost_best.append(self.best)
 
     def update_costs(self, population: List[Individual]):
-        best = (min if self.min_or_max == "min" else max)(
+        best: Individual = (min if self.min_or_max == "min" else max)(
             population, key=lambda individual: individual.fitness
         )
-        self._cost_best.append(best)
+        is_better = (
+            best.fitness < self.actual_best.fitness
+            if self.min_or_max == "min"
+            else best.fitness > self.actual_best.fitness
+        )
+        if not is_better:
+            self.best_nochange_conunter += 1
+
+        self.actual_best = best
+        self._cost_best.append(best.fitness)
         worst = (max if self.min_or_max == "min" else min)(
             population, key=lambda individual: individual.fitness
         )
-        self._cost_worst.append(worst)
+        self._cost_worst.append(worst.fitness)
         prom = calcular_promedio_fitness(population)
         self._cost_prom.append(prom)
 
@@ -112,8 +166,17 @@ class GeneticAlgorithm:
         return True
 
     def initialize_population(self) -> List[Individual]:
-        # Lógica para inicializar la población
-        return self.population_generator.generate_population(self.population_size)
+        if self.codification == "binary":
+            # FIXME
+            return self.population_generator.select(self.population_size)
+        elif self.codification == "permutation":
+            return self.population_generator.select(
+                self.population_size, self.limits[1]
+            )
+        else:
+            return self.population_generator.select(
+                self.population_size, self.limits[1]
+            )
 
     def select_parents(self, population: List[Individual]) -> List[Individual]:
         # Lógica para seleccionar padres
@@ -121,18 +184,46 @@ class GeneticAlgorithm:
 
     def crossover(self, population: List[Individual]) -> List[Individual]:
         # Lógica para realizar el cruce
-        return self.crossover_operator.crossover()
+        return self.crossover_operator.crossover(population)
 
     def mutate(self, population: List[Individual]) -> List[Individual]:
         # Lógica para realizar la mutación
-        return self.mutation_operator.mutate(population)
+        return self.mutation_operator.mutate(population, self.probability_mutation)
+
+    def evaluate_fitness(self, population: List[Individual]) -> List[Individual]:
+        for individual in population:
+            individual.fitness = self.objetive(individual.genotype)
+            self.function_call_counter += 1
 
     def evolve(self, objetive) -> List[Individual]:
         self._clear(objetive)
         population = self.initialize_population()
-
+        tiempo_inicio = time.time()
         while self.stopping_criteria():
             population_selected = self.select_parents(population)
             population_cross = self.crossover_operator(population_selected)
             population = self.mutate(population_cross)
             self.update_costs(population)
+
+            sys.stderr.write(
+                "\r iterations %d | call_functions %d | Best: %.2f | actual_sol: %.2f"
+                % (
+                    self.iterations,
+                    self.function_call_counter,
+                    self.best,
+                    self.actual_solution_value,
+                )
+            )
+            self.generations += 1
+            sys.stderr.flush()
+        sys.stderr.flush()
+        sys.stderr.write(
+            "\r Generations %d | call_functions %d | Best: %.2f "
+            % (self.Generations, self.function_call_counter, self.actual_best.fitnes)
+        )
+
+        tiempo_fin = time.time()
+        tiempo_total = tiempo_fin - tiempo_inicio
+        print(
+            f"Tiempo de ejecución: {int(tiempo_total // 3600):02d}:{int((tiempo_total % 3600) // 60):02d}:{int(tiempo_total % 60):02d}"
+        )
