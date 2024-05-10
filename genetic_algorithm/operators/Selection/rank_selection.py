@@ -1,6 +1,8 @@
 from typing import List
 from random import choices
 
+import numpy as np
+
 from genetic_algorithm.Individuals.individual import Individual
 from genetic_algorithm.operators.Selection.selection_operators import SelectionOperator
 

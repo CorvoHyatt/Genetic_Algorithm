@@ -14,7 +14,7 @@ class RouletteSelection(SelectionOperator):
         fitness_values = [individual.fitness for individual in population]
 
         selected_parents = []
-        while len(selected_parents) < len(population):
+        while len(selected_parents) < len(population) + 1:
             # Seleccionar un nuevo padre con pesos proporcionales a los valores de aptitud
             new_parent = choices(population, weights=fitness_values, k=1)[0]
 
