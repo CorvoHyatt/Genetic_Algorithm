@@ -1,5 +1,8 @@
 import math
+from typing import List
 import numpy as np
+
+from genetic_algorithm.Individuals.individual import Individual
 
 
 def calcular_bits(rango_entero: int, precision: float):
@@ -77,3 +80,12 @@ def convert_to_binary(numero, num_bits):
         arreglo_binario.insert(0, 0)  # Agregar ceros al principio
 
     return arreglo_binario
+
+
+def calcular_promedio_fitness(poblacion: List[Individual]) -> float:
+    if not poblacion:
+        return 0.0  # Retornar 0 si la población está vacía
+
+    suma_fitness = sum(individual.fitness for individual in poblacion)
+    promedio_fitness = suma_fitness / len(poblacion)
+    return promedio_fitness
