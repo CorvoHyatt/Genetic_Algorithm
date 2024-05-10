@@ -9,7 +9,9 @@ from genetic_algorithm.Individuals.individual import Individual
 class BinaryPopulationGenerator:
 
     @staticmethod
-    def generate_population(population_size: int, genotype_structure: List[int]):
+    def generate_population(
+        population_size: int, genotype_structure: List[int]
+    ) -> List[Individual]:
         bits_enteros, bits_decimales, variables = genotype_structure
         population = set()
         while len(population) < population_size:
