@@ -12,8 +12,8 @@ class RankSelection(SelectionOperator):
     def select(population: List[Individual]) -> List[Individual]:
         sorted_population = sorted(population, key=lambda x: x.fitness)
 
-        ranks = list(range(1, len(sorted_population) + 1))
-
+        # ranks = list(range(1, len(sorted_population) + 1))
+        ranks = list(range(len(sorted_population), 0, -1))
         total_ranks = sum(ranks)
         selection_probabilities = [rank / total_ranks for rank in ranks]
 
