@@ -15,7 +15,7 @@ class TournamentSelection:
             # Seleccionar un subconjunto aleatorio de individuos para el torneo
             tournament = sample(population, tournament_size)
             # Seleccionar al individuo con el mejor fitness en el torneo
-            winner = max(tournament, key=lambda x: x.fitness)
+            winner = min(tournament, key=lambda x: x.fitness)
             # Verificar que el nuevo padre sea diferente de los padres seleccionados previamente
             if not selected_parents or winner != selected_parents[-1]:
                 selected_parents.append(winner)

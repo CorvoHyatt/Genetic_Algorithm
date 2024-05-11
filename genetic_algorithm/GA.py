@@ -25,7 +25,7 @@ from genetic_algorithm.operators.Selection.tournament_selection import (
 from genetic_algorithm.population_generators.binary_generator import (
     BinaryPopulationGenerator,
 )
-from genetic_algorithm.population_generators.comninatory_generator import (
+from genetic_algorithm.population_generators.combinatory_generator import (
     CombinatoryPopulationGenerator,
 )
 from genetic_algorithm.population_generators.permutation_generator import (
@@ -44,7 +44,7 @@ class GeneticAlgorithm:
         crossover_operator: Literal["kpoints", "onepoint", "ordered", "uniform"],
         mutation_operator: Literal["bitinversion", "inversion", "shuffle", "swap"],
         stopping_criteria_type: Literal[
-            "function_calls", "iterations", "found_optimal", "nochangebest"
+            "function_calls", "generations", "found_optimal", "nochangebest"
         ] = "nochangebest",
         max_call_functions: int = None,
         max_generations: int = None,
@@ -55,6 +55,7 @@ class GeneticAlgorithm:
         limits: tuple[int, int] = [0, 32],
         precision: float = 0.00001,
         variables: int = 1,
+        min_or_max: Literal["min", "max"] = "min",
         population_size: int = 100,
         probability_mutation: int = 7,
         codification: Literal[
@@ -92,6 +93,7 @@ class GeneticAlgorithm:
             self.mutation_operator = Swap
         self.precision = precision
         self.variables = variables
+        self.min_or_max = min_or_max
         self.probability_mutation = probability_mutation
         self.stopping_criteria_type = stopping_criteria_type
         self.max_call_functions = max_call_functions
@@ -102,10 +104,13 @@ class GeneticAlgorithm:
         self.problem_type = problem_type
         self.limits = limits
         if codification == "binary":
+            self.codification = "binary"
             self.population_generator = BinaryPopulationGenerator
         elif codification == "permutation":
+            self.codification = "permutation"
             self.population_generator = PermutationPopulationGenerator
         else:
+            self.codification = "combination"
             self.population_generator = CombinatoryPopulationGenerator
 
     def _clear(self, objetive):
@@ -122,13 +127,14 @@ class GeneticAlgorithm:
         best: Individual = (min if self.min_or_max == "min" else max)(
             population, key=lambda individual: individual.fitness
         )
-        is_better = (
-            best.fitness < self.actual_best.fitness
-            if self.min_or_max == "min"
-            else best.fitness > self.actual_best.fitness
-        )
-        if not is_better:
-            self.best_nochange_conunter += 1
+        if self.generations != 0:
+            is_better = (
+                best.fitness < self.actual_best.fitness
+                if self.min_or_max == "min"
+                else best.fitness > self.actual_best.fitness
+            )
+            if not is_better:
+                self.best_nochange_conunter += 1
 
         self.actual_best = best
         self._cost_best.append(best.fitness)
@@ -152,8 +158,8 @@ class GeneticAlgorithm:
         ):
             return False
         if (
-            self.stopping_criteria_type == "iterations"
-            and self.iterations > self.max_iterations
+            self.stopping_criteria_type == "generations"
+            and self.generations > self.max_generations
         ):
             return False
 
@@ -168,13 +174,13 @@ class GeneticAlgorithm:
     def initialize_population(self) -> List[Individual]:
         if self.codification == "binary":
             # FIXME
-            return self.population_generator.select(self.population_size)
+            return self.population_generator.generate_population(self.population_size)
         elif self.codification == "permutation":
-            return self.population_generator.select(
+            return self.population_generator.generate_population(
                 self.population_size, self.limits[1]
             )
         else:
-            return self.population_generator.select(
+            return self.population_generator.generate_population(
                 self.population_size, self.limits[1]
             )
 
@@ -191,27 +197,30 @@ class GeneticAlgorithm:
         return self.mutation_operator.mutate(population, self.probability_mutation)
 
     def evaluate_fitness(self, population: List[Individual]) -> List[Individual]:
+        evaluated_population = []
         for individual in population:
             individual.fitness = self.objetive(individual.genotype)
+            evaluated_population.append(individual)
             self.function_call_counter += 1
+        return evaluated_population
 
     def evolve(self, objetive) -> List[Individual]:
         self._clear(objetive)
         population = self.initialize_population()
         tiempo_inicio = time.time()
         while self.stopping_criteria():
-            population_selected = self.select_parents(population)
-            population_cross = self.crossover_operator(population_selected)
+            population_evaluated = self.evaluate_fitness(population)
+            self.update_costs(population_evaluated)
+            population_selected = self.select_parents(population_evaluated)
+            population_cross = self.crossover(population_selected)
             population = self.mutate(population_cross)
-            self.update_costs(population)
 
             sys.stderr.write(
-                "\r iterations %d | call_functions %d | Best: %.2f | actual_sol: %.2f"
+                "\r Generations %d | call_functions %d | Best: %.2f"
                 % (
-                    self.iterations,
+                    self.generations,
                     self.function_call_counter,
-                    self.best,
-                    self.actual_solution_value,
+                    self.actual_best.fitness,
                 )
             )
             self.generations += 1
@@ -219,7 +228,7 @@ class GeneticAlgorithm:
         sys.stderr.flush()
         sys.stderr.write(
             "\r Generations %d | call_functions %d | Best: %.2f "
-            % (self.Generations, self.function_call_counter, self.actual_best.fitnes)
+            % (self.generations, self.function_call_counter, self.actual_best.fitness)
         )
 
         tiempo_fin = time.time()
@@ -227,3 +236,4 @@ class GeneticAlgorithm:
         print(
             f"Tiempo de ejecución: {int(tiempo_total // 3600):02d}:{int((tiempo_total % 3600) // 60):02d}:{int(tiempo_total % 60):02d}"
         )
+        return self.actual_best
