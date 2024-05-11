@@ -34,7 +34,11 @@ from genetic_algorithm.population_generators.permutation_generator import (
 from genetic_algorithm.population_generators.population_generator import (
     PopulationGenerator,
 )
-from genetic_algorithm.utils.utils import calcular_promedio_fitness
+from genetic_algorithm.utils.utils import (
+    calcular_bits,
+    calcular_modulo,
+    calcular_promedio_fitness,
+)
 
 
 class GeneticAlgorithm:
@@ -58,9 +62,7 @@ class GeneticAlgorithm:
         min_or_max: Literal["min", "max"] = "min",
         population_size: int = 100,
         probability_mutation: int = 7,
-        codification: Literal[
-            "binary", "permutation", "combination", "real"
-        ] = "permutation",
+        codification: Literal["binary", "permutation", "combination"] = "permutation",
     ):
         self.population_size = population_size
         if selection_operator == "rank":
@@ -173,8 +175,11 @@ class GeneticAlgorithm:
 
     def initialize_population(self) -> List[Individual]:
         if self.codification == "binary":
-            # FIXME
-            return self.population_generator.generate_population(self.population_size)
+            bits_enteros, bits_decimales = calcular_bits(self.limits[1], self.precision)
+            genotype_structure = [bits_enteros, bits_decimales, self.variables]
+            return self.population_generator.generate_population(
+                self.population_size, genotype_structure
+            )
         elif self.codification == "permutation":
             return self.population_generator.generate_population(
                 self.population_size, self.limits[1]
@@ -206,6 +211,7 @@ class GeneticAlgorithm:
 
     def evolve(self, objetive) -> List[Individual]:
         self._clear(objetive)
+        decimal = len(str(calcular_modulo(self.precision))) - 1
         population = self.initialize_population()
         tiempo_inicio = time.time()
         while self.stopping_criteria():
@@ -215,6 +221,28 @@ class GeneticAlgorithm:
             population_cross = self.crossover(population_selected)
             population = self.mutate(population_cross)
 
+            if self.problem_type == "COP":
+                sys.stderr.write(
+                    "\r Generations %d | call_functions %d | Best: %.2f"
+                    % (
+                        self.generations,
+                        self.function_call_counter,
+                        self.actual_best.fitness,
+                    )
+                )
+            else:
+                sys.stderr.write(
+                    f"\r Generations %d | call_functions %d | Best: %.{decimal}f"
+                    % (
+                        self.generations,
+                        self.function_call_counter,
+                        self.actual_best.fitness,
+                    )
+                )
+            self.generations += 1
+            sys.stderr.flush()
+        sys.stderr.flush()
+        if self.problem_type == "COP":
             sys.stderr.write(
                 "\r Generations %d | call_functions %d | Best: %.2f"
                 % (
@@ -223,13 +251,15 @@ class GeneticAlgorithm:
                     self.actual_best.fitness,
                 )
             )
-            self.generations += 1
-            sys.stderr.flush()
-        sys.stderr.flush()
-        sys.stderr.write(
-            "\r Generations %d | call_functions %d | Best: %.2f "
-            % (self.generations, self.function_call_counter, self.actual_best.fitness)
-        )
+        else:
+            sys.stderr.write(
+                f"\r Generations %d | call_functions %d | Best: %.{decimal}f"
+                % (
+                    self.generations,
+                    self.function_call_counter,
+                    self.actual_best.fitness,
+                )
+            )
 
         tiempo_fin = time.time()
         tiempo_total = tiempo_fin - tiempo_inicio
